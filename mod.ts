@@ -53,6 +53,8 @@ export function dlopen<
   };
   close(): void;
 } {
+  // We are checking this behavior with tests and the compile-time assert below.
+  // deno-lint-ignore no-explicit-any
   return Deno.dlopen(file, f as any) as any;
 }
 
