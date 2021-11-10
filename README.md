@@ -17,22 +17,26 @@ After that, simply replace `Deno.dlopen` with our `dlopen` function.
 
 ## Example
 
-Now, let's look at what `typedffi` can do for you without _any additional code_!
+Now, let's look at what `typedffi` can do for you by only adding in a `as const`
+after your FFI object:
 
 ```ts
 import { dlopen } from "https://deno.land/x/typedffi/mod.ts";
 
-const lib = dlopen("YOUR_LIB", {
-  add: {
-    parameters: ["i32", "i32"],
-    result: "i32",
-  },
-  long_async_crypto: {
-    parameters: ["buffer", "u32"],
-    result: "void",
-    nonblocking: true,
-  },
-});
+const lib = dlopen(
+  "YOUR_LIB",
+  {
+    add: {
+      parameters: ["i32", "i32"],
+      result: "i32",
+    },
+    long_async_crypto: {
+      parameters: ["buffer", "u32"],
+      result: "void",
+      nonblocking: true,
+    },
+  } as const,
+);
 
 // You can now safely call `lib.symbols.add` while still having TypeScript
 // typing for the function.
