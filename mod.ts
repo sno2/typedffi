@@ -17,42 +17,47 @@ export type DeriveJSType<T extends "buffer" | Deno.NativeType> = {
 
 export type DeriveJSTypeTuple<
   T extends readonly ("buffer" | Deno.NativeType)[],
-  Draft extends readonly (number | Uint8Array | void)[] = [],
-> = T["length"] extends 0 ? Draft
+  Draft extends readonly (number | Uint8Array | void)[] = []
+> = T["length"] extends 0
+  ? Draft
   : T extends readonly [infer $I, ...infer $R]
-    ? $R extends readonly ("buffer" | Deno.NativeType)[]
-      ? $I extends "buffer" | Deno.NativeType
-        ? DeriveJSTypeTuple<$R, [...Draft, DeriveJSType<$I>]>
+  ? $R extends readonly ("buffer" | Deno.NativeType)[]
+    ? $I extends "buffer" | Deno.NativeType
+      ? DeriveJSTypeTuple<$R, [...Draft, DeriveJSType<$I>]>
       : 1
     : 2
   : 3;
 
-/** A better-typed wrapper over `Deno.dlopen`. */
-export function dlopen<
-  T extends {
-    [K: string]: {
-      parameters: readonly ("buffer" | Deno.NativeType)[];
-      result: Deno.NativeType;
-      nonblocking?: boolean;
-    };
-  },
->(
-  file: string,
-  f: T,
-): {
+export interface TypedDLOpenInit {
+  [K: string]: {
+    parameters: readonly ("buffer" | Deno.NativeType)[];
+    result: Deno.NativeType;
+    nonblocking?: boolean;
+  };
+}
+
+export interface TypedDLOpenDynamicLib<T extends TypedDLOpenInit> {
   symbols: {
     [K in keyof T]: DeriveJSTypeTuple<T[K]["parameters"]> extends infer $P
-      ? $P extends unknown[] ? (
-        ...args: $P
-      ) => DeriveJSType<T[K]["result"]> extends infer $R
-        ? T[K]["nonblocking"] extends true ? Promise<$R>
-        : $R
-        : never
-      : (...args: unknown[]) => unknown
+      ? $P extends unknown[]
+        ? (
+            ...args: $P
+          ) => DeriveJSType<T[K]["result"]> extends infer $R
+            ? T[K]["nonblocking"] extends true
+              ? Promise<$R>
+              : $R
+            : never
+        : (...args: unknown[]) => unknown
       : never;
   };
   close(): void;
-} {
+}
+
+/** A better-typed wrapper over `Deno.dlopen`. */
+export function dlopen<T extends TypedDLOpenInit>(
+  file: string,
+  f: T
+): TypedDLOpenDynamicLib<T> {
   // We are checking this behavior with tests and the compile-time assert below.
   // deno-lint-ignore no-explicit-any
   return Deno.dlopen(file, f as any) as any;
@@ -67,6 +72,7 @@ export const __COMPILE_ASSERT: {
   close(): void;
 } extends Deno.DynamicLibrary<{
   hello: { parameters: ["u8", "i32"]; result: "void"; nonblocking: true };
-}> ? true
+}>
+  ? true
   : "this module is out of date with Deno's current typings, please send an issue to the repo" =
-    true;
+  true;
